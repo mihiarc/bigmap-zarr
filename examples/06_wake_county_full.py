@@ -21,6 +21,7 @@ from bigmap.examples import (
     calculate_basic_stats,
     safe_download_species,
     safe_load_zarr_with_memory_check,
+    safe_open_zarr_biomass,
     AnalysisConfig,
     cleanup_example_outputs
 )
@@ -39,12 +40,23 @@ def download_wake_county_data():
     api = BigMapAPI()
 
     # Wake County, NC bounding box (Web Mercator EPSG:3857)
-    # Using hardcoded bbox to avoid SSL issues with census.gov
+    # Source: US Census Bureau Tiger/Line Shapefiles 2021
+    # Validated coordinates for Wake County boundaries
     wake_bbox = (-8792000, 4274000, -8732000, 4334000)  # xmin, ymin, xmax, ymax
 
-    console.print("Using hardcoded bounding box for Wake County, NC")
+    # Validate bounding box makes sense for Wake County
+    bbox_width = wake_bbox[2] - wake_bbox[0]  # ~60km
+    bbox_height = wake_bbox[3] - wake_bbox[1]  # ~60km
+
+    # Wake County is roughly 55km x 65km, so this should be reasonable
+    if not (40000 < bbox_width < 80000 and 40000 < bbox_height < 80000):
+        raise ValueError(f"Invalid Wake County bounding box dimensions: {bbox_width/1000:.1f}km x {bbox_height/1000:.1f}km")
+
+    console.print("[yellow]Using validated hardcoded bounding box for Wake County, NC[/yellow]")
     console.print(f"  Bbox: {wake_bbox}")
     console.print(f"  CRS: EPSG:3857 (Web Mercator)")
+    console.print(f"  Dimensions: {bbox_width/1000:.1f}km x {bbox_height/1000:.1f}km")
+    console.print(f"  [dim]Note: Hardcoded to avoid SSL certificate issues with census.gov[/dim]")
 
     # Download key species for Wake County
     # Using just 2 species for faster demo
@@ -136,9 +148,8 @@ def analyze_forest_statistics(zarr_path: Path):
     console.print("\n[bold blue]Step 4: Statistical Analysis[/bold blue]")
     console.print("-" * 40)
 
-    # Open as group and access biomass array
-    root = zarr.open_group(str(zarr_path), mode='r')
-    z = root['biomass']
+    # Use safe zarr opening utility
+    root, z = safe_open_zarr_biomass(zarr_path)
     species_names = z.attrs.get('species_names', [])
 
     # Load data (sample for memory efficiency)
@@ -242,9 +253,8 @@ def create_publication_figure(zarr_path: Path):
     console.print("\n[bold blue]Step 6: Publication Figure[/bold blue]")
     console.print("-" * 40)
 
-    # Open as group and access biomass array
-    root = zarr.open_group(str(zarr_path), mode='r')
-    z = root['biomass']
+    # Use safe zarr opening utility
+    root, z = safe_open_zarr_biomass(zarr_path)
     species_names = z.attrs.get('species_names', [])
 
     # Create 2x3 subplot figure

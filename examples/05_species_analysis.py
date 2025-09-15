@@ -16,6 +16,7 @@ from bigmap.examples import (
     create_sample_zarr,
     calculate_basic_stats,
     safe_load_zarr_with_memory_check,
+    safe_open_zarr_biomass,
     AnalysisConfig
 )
 from bigmap.config import BigMapSettings, CalculationConfig
@@ -47,10 +48,14 @@ def analyze_species_proportions(zarr_path: Path):
     # Load zarr data with memory management
     config = AnalysisConfig()
     try:
-        root = zarr.open_group(str(zarr_path), mode='r')
-        z = root['biomass']
-        species_codes = root.attrs.get('species_codes', [])
-        species_names = root.attrs.get('species_names', [])
+        root, z = safe_open_zarr_biomass(zarr_path)
+        # Get metadata from root (whether it's array or group)
+        if hasattr(root, 'attrs'):
+            species_codes = root.attrs.get('species_codes', [])
+            species_names = root.attrs.get('species_names', [])
+        else:
+            species_codes = []
+            species_names = []
 
         console.print(f"Analyzing {len(species_codes) - 1} species")  # -1 for TOTAL
 
@@ -178,9 +183,11 @@ def analyze_species_groups(zarr_path: Path):
         console.print(f"   - {name}: {Path(path).name}")
 
     # Quick statistics
-    root = zarr.open_group(str(zarr_path), mode='r')
-    z = root['biomass']
-    sample = z[:100, :100, :100]  # Small sample for stats
+    root, z = safe_open_zarr_biomass(zarr_path)
+    # Safe sample size based on actual array dimensions
+    max_h = min(100, z.shape[1])
+    max_w = min(100, z.shape[2])
+    sample = z[:, :max_h, :max_w]  # Small sample for stats
 
     hardwood_biomass = np.sum([sample[i] for i in HARDWOOD_INDICES if i < len(sample)], axis=0)
     softwood_biomass = np.sum([sample[i] for i in SOFTWOOD_INDICES if i < len(sample)], axis=0)
@@ -201,9 +208,8 @@ def analyze_southern_yellow_pine(zarr_path: Path):
     console.print("\n[bold blue]Southern Yellow Pine Analysis[/bold blue]")
     console.print("-" * 40)
 
-    root = zarr.open_group(str(zarr_path), mode='r')
-    z = root['biomass']
-    species_codes = root.attrs.get('species_codes', [])
+    root, z = safe_open_zarr_biomass(zarr_path)
+    species_codes = root.attrs.get('species_codes', []) if hasattr(root, 'attrs') else []
 
     # Check which SYP species are present
     syp_present = []
@@ -291,9 +297,11 @@ def identify_diversity_hotspots(zarr_path: Path):
     results = processor.run_calculations(str(zarr_path))
 
     # Analyze hotspots (simplified for example)
-    root = zarr.open_group(str(zarr_path), mode='r')
-    z = root['biomass']
-    sample = z[:, :200, :200]
+    root, z = safe_open_zarr_biomass(zarr_path)
+    # Safe sample size based on actual array dimensions
+    max_h = min(200, z.shape[1])
+    max_w = min(200, z.shape[2])
+    sample = z[:, :max_h, :max_w]
 
     # Calculate Shannon diversity manually for demonstration
     total = sample[0]
