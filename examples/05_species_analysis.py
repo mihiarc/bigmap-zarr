@@ -47,9 +47,10 @@ def analyze_species_proportions(zarr_path: Path):
     # Load zarr data with memory management
     config = AnalysisConfig()
     try:
-        z = zarr.open_array(str(zarr_path), mode='r')
-        species_codes = z.attrs.get('species_codes', [])
-        species_names = z.attrs.get('species_names', [])
+        root = zarr.open_group(str(zarr_path), mode='r')
+        z = root['biomass']
+        species_codes = root.attrs.get('species_codes', [])
+        species_names = root.attrs.get('species_names', [])
 
         console.print(f"Analyzing {len(species_codes) - 1} species")  # -1 for TOTAL
 
@@ -125,19 +126,27 @@ def analyze_species_groups(zarr_path: Path):
     console.print("-" * 40)
 
     # Register group calculations
-    hardwood_calc = SpeciesGroupProportion(
-        species_indices=HARDWOOD_INDICES,
-        group_name="hardwoods",
-        exclude_total_layer=True
-    )
-    registry.register(hardwood_calc)
+    # Create custom classes for hardwood and softwood groups
+    class HardwoodProportion(SpeciesGroupProportion):
+        def __init__(self, **kwargs):
+            super().__init__(
+                species_indices=HARDWOOD_INDICES,
+                group_name="hardwoods",
+                exclude_total_layer=True,
+                **kwargs
+            )
 
-    softwood_calc = SpeciesGroupProportion(
-        species_indices=SOFTWOOD_INDICES,
-        group_name="softwoods",
-        exclude_total_layer=True
-    )
-    registry.register(softwood_calc)
+    class SoftwoodProportion(SpeciesGroupProportion):
+        def __init__(self, **kwargs):
+            super().__init__(
+                species_indices=SOFTWOOD_INDICES,
+                group_name="softwoods",
+                exclude_total_layer=True,
+                **kwargs
+            )
+
+    registry.register("species_group_proportion_hardwoods", HardwoodProportion)
+    registry.register("species_group_proportion_softwoods", SoftwoodProportion)
 
     console.print("✅ Registered hardwood and softwood group calculations")
 
@@ -169,7 +178,8 @@ def analyze_species_groups(zarr_path: Path):
         console.print(f"   - {name}: {Path(path).name}")
 
     # Quick statistics
-    z = zarr.open_array(str(zarr_path), mode='r')
+    root = zarr.open_group(str(zarr_path), mode='r')
+    z = root['biomass']
     sample = z[:100, :100, :100]  # Small sample for stats
 
     hardwood_biomass = np.sum([sample[i] for i in HARDWOOD_INDICES if i < len(sample)], axis=0)
@@ -191,8 +201,9 @@ def analyze_southern_yellow_pine(zarr_path: Path):
     console.print("\n[bold blue]Southern Yellow Pine Analysis[/bold blue]")
     console.print("-" * 40)
 
-    z = zarr.open_array(str(zarr_path), mode='r')
-    species_codes = z.attrs.get('species_codes', [])
+    root = zarr.open_group(str(zarr_path), mode='r')
+    z = root['biomass']
+    species_codes = root.attrs.get('species_codes', [])
 
     # Check which SYP species are present
     syp_present = []
@@ -213,12 +224,17 @@ def analyze_southern_yellow_pine(zarr_path: Path):
 
     # Register SYP group calculation
     syp_indices = [s['index'] for s in syp_present]
-    syp_calc = SpeciesGroupProportion(
-        species_indices=syp_indices,
-        group_name="southern_yellow_pine",
-        exclude_total_layer=True
-    )
-    registry.register(syp_calc)
+
+    class SYPGroupProportion(SpeciesGroupProportion):
+        def __init__(self, **kwargs):
+            super().__init__(
+                species_indices=syp_indices,
+                group_name="southern_yellow_pine",
+                exclude_total_layer=True,
+                **kwargs
+            )
+
+    registry.register("species_group_proportion_southern_yellow_pine", SYPGroupProportion)
 
     # Calculate SYP proportion
     settings = BigMapSettings(
@@ -275,7 +291,8 @@ def identify_diversity_hotspots(zarr_path: Path):
     results = processor.run_calculations(str(zarr_path))
 
     # Analyze hotspots (simplified for example)
-    z = zarr.open_array(str(zarr_path), mode='r')
+    root = zarr.open_group(str(zarr_path), mode='r')
+    z = root['biomass']
     sample = z[:, :200, :200]
 
     # Calculate Shannon diversity manually for demonstration
@@ -285,12 +302,11 @@ def identify_diversity_hotspots(zarr_path: Path):
     if np.any(forest_mask):
         # Simple Shannon calculation
         proportions = sample[1:] / (total + 1e-10)
-        proportions = proportions[:, forest_mask]
 
         shannon = np.zeros(forest_mask.shape)
         for i in range(proportions.shape[0]):
-            p = proportions[i].reshape(forest_mask.shape)
-            mask = p > 0
+            p = proportions[i]
+            mask = (p > 0) & forest_mask
             shannon[mask] -= p[mask] * np.log(p[mask])
 
         # Find hotspots (top 10%)

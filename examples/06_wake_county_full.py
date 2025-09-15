@@ -38,32 +38,42 @@ def download_wake_county_data():
 
     api = BigMapAPI()
 
+    # Wake County, NC bounding box (Web Mercator EPSG:3857)
+    # Using hardcoded bbox to avoid SSL issues with census.gov
+    wake_bbox = (-8792000, 4274000, -8732000, 4334000)  # xmin, ymin, xmax, ymax
+
+    console.print("Using hardcoded bounding box for Wake County, NC")
+    console.print(f"  Bbox: {wake_bbox}")
+    console.print(f"  CRS: EPSG:3857 (Web Mercator)")
+
     # Download key species for Wake County
+    # Using just 2 species for faster demo
     species = [
         ("0131", "Loblolly Pine"),
         ("0068", "Red Maple"),
-        ("0611", "Sweetgum"),
-        ("0802", "White Oak"),
-        ("0316", "Eastern Redcedar")
+        # ("0611", "Sweetgum"),  # Commented out for faster demo
+        # ("0802", "White Oak"),
+        # ("0316", "Eastern Redcedar")
     ]
 
-    console.print(f"Downloading {len(species)} species for Wake County, NC...")
+    console.print(f"\nDownloading {len(species)} species for Wake County, NC...")
 
     files = []
     for code, name in species:
         console.print(f"  Downloading {name} ({code})...")
         try:
             result = api.download_species(
-                state="North Carolina",
-                county="Wake",
+                bbox=wake_bbox,
+                crs="3857",  # Web Mercator
                 species_codes=[code],
                 output_dir="wake_county_data"
             )
             files.extend(result)
+            console.print(f"    ✅ Downloaded {name}")
         except Exception as e:
             console.print(f"    [yellow]Skipped {name}: {e}[/yellow]")
 
-    console.print(f"✅ Downloaded {len(files)} species files")
+    console.print(f"\n✅ Downloaded {len(files)} species files")
     return files
 
 
@@ -126,7 +136,9 @@ def analyze_forest_statistics(zarr_path: Path):
     console.print("\n[bold blue]Step 4: Statistical Analysis[/bold blue]")
     console.print("-" * 40)
 
-    z = zarr.open_array(str(zarr_path), mode='r')
+    # Open as group and access biomass array
+    root = zarr.open_group(str(zarr_path), mode='r')
+    z = root['biomass']
     species_names = z.attrs.get('species_names', [])
 
     # Load data (sample for memory efficiency)
@@ -230,20 +242,28 @@ def create_publication_figure(zarr_path: Path):
     console.print("\n[bold blue]Step 6: Publication Figure[/bold blue]")
     console.print("-" * 40)
 
-    z = zarr.open_array(str(zarr_path), mode='r')
+    # Open as group and access biomass array
+    root = zarr.open_group(str(zarr_path), mode='r')
+    z = root['biomass']
     species_names = z.attrs.get('species_names', [])
 
     # Create 2x3 subplot figure
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     fig.suptitle('Wake County Forest Analysis - BigMap 2018', fontsize=16, fontweight='bold')
 
-    # Load sample data
-    data = z[:, :500, :500]
+    # Load sample data (adjust for smaller test arrays)
+    h, w = z.shape[1], z.shape[2]
+    data = z[:, :min(500, h), :min(500, w)]
 
     # 1. Total Biomass
     ax = axes[0, 0]
     total = data[0]
-    im = ax.imshow(total, cmap='YlGn', vmin=0, vmax=np.percentile(total[total > 0], 98))
+    # Safe percentile calculation
+    if np.any(total > 0):
+        vmax_total = np.percentile(total[total > 0], 98)
+    else:
+        vmax_total = 1.0
+    im = ax.imshow(total, cmap='YlGn', vmin=0, vmax=vmax_total)
     ax.set_title('Total Biomass', fontsize=12)
     ax.axis('off')
     plt.colorbar(im, ax=ax, label='Mg/ha', fraction=0.046)
@@ -251,7 +271,8 @@ def create_publication_figure(zarr_path: Path):
     # 2. Species Richness
     ax = axes[0, 1]
     richness = np.sum(data[1:] > 0, axis=0)
-    im = ax.imshow(richness, cmap='Spectral_r', vmin=0, vmax=richness.max())
+    vmax_richness = richness.max() if richness.max() > 0 else 1
+    im = ax.imshow(richness, cmap='Spectral_r', vmin=0, vmax=vmax_richness)
     ax.set_title('Species Richness', fontsize=12)
     ax.axis('off')
     plt.colorbar(im, ax=ax, label='Count', fraction=0.046)
@@ -267,7 +288,9 @@ def create_publication_figure(zarr_path: Path):
         mask = p > 0
         shannon[mask] -= p[mask] * np.log(p[mask])
 
-    im = ax.imshow(shannon, cmap='viridis', vmin=0, vmax=shannon.max())
+    # Handle case where all values are the same
+    vmax = shannon.max() if shannon.max() > 0 else 1.0
+    im = ax.imshow(shannon, cmap='viridis', vmin=0, vmax=vmax)
     ax.set_title('Shannon Diversity', fontsize=12)
     ax.axis('off')
     plt.colorbar(im, ax=ax, label="H'", fraction=0.046)
@@ -309,10 +332,13 @@ def create_publication_figure(zarr_path: Path):
 
     # Save publication figure
     output_path = Path("wake_results/wake_county_publication.png")
-    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
-    console.print(f"✅ Created publication figure: {output_path}")
-
-    plt.show()
+    try:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
+        console.print(f"✅ Created publication figure: {output_path}")
+    except Exception as e:
+        console.print(f"[yellow]Warning: Could not save publication figure: {e}[/yellow]")
+    finally:
+        plt.close()  # Close figure to free memory
 
 
 def create_summary_report(zarr_path: Path):
@@ -379,8 +405,18 @@ def main():
 
     if not zarr_path.exists():
         console.print("\n[yellow]Data not found. Starting download...[/yellow]")
-        download_wake_county_data()
-        zarr_path = create_wake_zarr()
+        files = download_wake_county_data()
+
+        # If download failed, use sample data
+        if not files:
+            console.print("\n[yellow]Download failed. Using sample data instead.[/yellow]")
+            from bigmap.examples import create_sample_zarr
+            # Create directory if it doesn't exist
+            zarr_path.parent.mkdir(parents=True, exist_ok=True)
+            zarr_path = create_sample_zarr(zarr_path, n_species=5)
+            console.print("[yellow]Note: Using synthetic data for demonstration[/yellow]")
+        else:
+            zarr_path = create_wake_zarr()
     else:
         console.print(f"\n[green]Using existing data: {zarr_path}[/green]")
 

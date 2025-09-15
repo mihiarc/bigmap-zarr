@@ -34,7 +34,8 @@
       "Read(//usr/**)",
       "Bash(python:*)",
       "Bash(source:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []

@@ -180,7 +180,13 @@ def safe_load_zarr_with_memory_check(zarr_path: Path,
         config = AnalysisConfig()
 
     try:
-        z = zarr.open_array(str(zarr_path), mode='r')
+        # Try to open as array first, if that fails try as group
+        try:
+            z = zarr.open_array(str(zarr_path), mode='r')
+        except Exception:
+            # If it's a group, open the biomass array within it
+            root = zarr.open_group(str(zarr_path), mode='r')
+            z = root['biomass']
 
         # Calculate total pixels
         total_pixels = z.shape[1] * z.shape[2]
