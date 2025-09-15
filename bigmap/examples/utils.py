@@ -300,35 +300,66 @@ def create_sample_zarr(output_path: Path, n_species: int = 3) -> Path:
 
 
 def print_zarr_info(zarr_path: Path) -> None:
-    """Print information about a zarr array with error handling."""
+    """Print information about a zarr store with error handling."""
     try:
-        z = zarr.open_array(str(zarr_path), mode='r')
-        console.print(f"\n[cyan]Zarr Array Info:[/cyan]")
-        console.print(f"  Shape: {z.shape}")
-        console.print(f"  Chunks: {z.chunks}")
-        console.print(f"  Dtype: {z.dtype}")
-        console.print(f"  Size: {z.nbytes / 1e6:.2f} MB")
+        # Try to open as group first (new structure)
+        try:
+            root = zarr.open_group(str(zarr_path), mode='r')
+            biomass_array = root['biomass']
+            console.print(f"\n[cyan]Zarr Store Info:[/cyan]")
+            console.print(f"  Shape: {biomass_array.shape}")
+            console.print(f"  Chunks: {biomass_array.chunks}")
+            console.print(f"  Dtype: {biomass_array.dtype}")
+            console.print(f"  Size: {biomass_array.nbytes / 1e6:.2f} MB")
 
-        if 'layer_names' in z.attrs:
-            console.print(f"  Layers: {len(z.attrs['layer_names'])}")
-            console.print(f"    {', '.join(z.attrs['layer_names'][:3])}...")
+            # Display species information if available
+            if 'species_codes' in root and 'species_names' in root:
+                num_species = root.attrs.get('num_species', 0)
+                console.print(f"  Species: {num_species}")
+                if num_species > 0:
+                    species_list = []
+                    for i in range(min(3, num_species)):  # Show first 3
+                        code = root['species_codes'][i]
+                        name = root['species_names'][i]
+                        if code:
+                            species_list.append(f"{code} ({name})")
+                    if species_list:
+                        console.print(f"    {', '.join(species_list)}{'...' if num_species > 3 else ''}")
+        except (KeyError, ValueError):
+            # Fall back to legacy array format
+            z = zarr.open_array(str(zarr_path), mode='r')
+            console.print(f"\n[cyan]Zarr Array Info:[/cyan]")
+            console.print(f"  Shape: {z.shape}")
+            console.print(f"  Chunks: {z.chunks}")
+            console.print(f"  Dtype: {z.dtype}")
+            console.print(f"  Size: {z.nbytes / 1e6:.2f} MB")
+
+            if 'layer_names' in z.attrs:
+                console.print(f"  Layers: {len(z.attrs['layer_names'])}")
+                console.print(f"    {', '.join(z.attrs['layer_names'][:3])}...")
     except Exception as e:
         console.print(f"[red]Error reading zarr info: {e}[/red]")
 
 
 def calculate_basic_stats(zarr_path: Path, sample_size: Optional[int] = 1000) -> Dict[str, Any]:
     """
-    Calculate basic statistics from a zarr array.
+    Calculate basic statistics from a zarr store.
 
     Args:
-        zarr_path: Path to zarr array
+        zarr_path: Path to zarr store (group or array)
         sample_size: Size of sample to use (None for full array)
 
     Returns:
         Dictionary of statistics
     """
     try:
-        z = zarr.open_array(str(zarr_path), mode='r')
+        # Try to open as group first (new structure)
+        try:
+            root = zarr.open_group(str(zarr_path), mode='r')
+            z = root['biomass']
+        except (KeyError, ValueError):
+            # Fall back to legacy array format
+            z = zarr.open_array(str(zarr_path), mode='r')
 
         # Sample data if specified
         if sample_size and z.shape[1] > sample_size:
