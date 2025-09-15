@@ -119,11 +119,10 @@ def create_custom_bbox_configs():
 
     configs = []
     for area in custom_areas:
-        config = LocationConfig(
-            location_type="custom",
-            wgs84_bbox=area["bbox"]
+        config = LocationConfig.from_bbox(
+            bbox=area["bbox"],
+            name=area["name"]
         )
-        config._config['location']['name'] = area["name"]
 
         # Save
         filename = area["name"].lower().replace(' ', '_') + ".yaml"
@@ -159,16 +158,15 @@ def batch_process_locations():
         if loc["type"] == "state":
             config = LocationConfig.from_state(loc["name"])
         elif loc["type"] == "county":
-            config = LocationConfig(location_type="county")
-            config._config['location']['name'] = f"{loc['name']} County, {loc['state']}"
-            config._config['location']['county'] = loc['name']
-            config._config['location']['state'] = loc['state']
-        else:  # custom
-            config = LocationConfig(
-                location_type="custom",
-                wgs84_bbox=loc["bbox"]
+            config = LocationConfig.from_county(
+                county=loc['name'],
+                state=loc['state']
             )
-            config._config['location']['name'] = loc["name"]
+        else:  # custom
+            config = LocationConfig.from_bbox(
+                bbox=loc["bbox"],
+                name=loc["name"]
+            )
 
         console.print(f"    Type: {config.location_type}")
         console.print(f"    CRS: {config.target_crs}")
