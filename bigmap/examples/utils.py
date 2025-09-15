@@ -181,14 +181,14 @@ def safe_open_zarr_biomass(zarr_path: Path) -> Tuple[zarr.Group, zarr.Array]:
         # First try to open as array (legacy format)
         z = zarr.open_array(str(zarr_path), mode='r')
         return z, z
-    except (zarr.errors.ValueError, zarr.errors.ContainsGroupError):
+    except (zarr.errors.NodeTypeValidationError, Exception):
         # If it's a group, open the group and access biomass array
         try:
             root = zarr.open_group(str(zarr_path), mode='r')
             if 'biomass' not in root:
                 raise KeyError(f"'biomass' array not found in zarr group: {zarr_path}")
             return root, root['biomass']
-        except (zarr.errors.ValueError, KeyError) as e:
+        except (Exception, KeyError) as e:
             raise ValueError(f"Cannot open zarr store {zarr_path}: {e}")
 
 
