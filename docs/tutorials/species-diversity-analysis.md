@@ -16,15 +16,22 @@ Where pi is the proportion of species i. Higher values indicate greater diversit
 - H' = 0 indicates a monoculture
 - H' > 3 indicates high diversity
 
-### Simpson Diversity Index (D)
-The Simpson index (Simpson, 1949) represents the probability that two randomly selected individuals belong to different species:
+### Simpson Diversity Index
+The Simpson index (Simpson, 1949) has multiple formulations:
 
-**D = 1 - Σ(pi²)**
+**Simpson's Dominance (D)**: Σ(pi²)
+- Probability that two individuals belong to the same species
+- Values range from 0 to 1 (lower = more diverse)
 
-Often reported as 1/D (inverse Simpson):
-- Values range from 0 to 1 (or 1 to ∞ for inverse)
-- Higher values indicate greater diversity
-- Less sensitive to rare species than Shannon
+**Simpson's Diversity (1-D)**: 1 - Σ(pi²)
+- Probability that two individuals belong to different species
+- Values range from 0 to 1 (higher = more diverse)
+
+**Inverse Simpson (1/D)**: 1/Σ(pi²)
+- Effective number of equally abundant species
+- Values range from 1 to S (number of species)
+
+Note: The BigMap implementation calculates dominance (D) by default, with options for diversity (1-D) or inverse (1/D) via the `inverse` parameter.
 
 ### Pielou's Evenness (J)
 Pielou's evenness (Pielou, 1966) measures how evenly species are distributed:
@@ -328,10 +335,11 @@ print(f"Largest hotspot: {max(hotspot_sizes):.1f} hectares")
 - **2.0-3.0**: Moderate to high diversity, healthy forest
 - **> 3.0**: Very high diversity, exceptional biodiversity
 
-**Simpson Index (1/D)**
-- **< 2**: Low diversity with strong dominance
-- **2-5**: Moderate diversity
-- **> 5**: High diversity with even species distribution
+**Simpson Index**
+- **Dominance (D < 0.5)**: High diversity
+- **Dominance (D > 0.7)**: Low diversity, few species dominate
+- **Diversity (1-D > 0.5)**: Good diversity
+- **Inverse (1/D > 5)**: High effective species number
 
 **Evenness (J)**
 - **< 0.5**: Strong dominance by few species

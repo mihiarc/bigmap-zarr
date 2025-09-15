@@ -14,6 +14,7 @@ import shutil
 from typing import List, Optional, Dict, Any, Tuple
 from rich.console import Console
 from dataclasses import dataclass
+from typing import Any
 
 console = Console()
 
@@ -49,9 +50,25 @@ def cleanup_example_outputs(directories: Optional[List[str]] = None) -> None:
             "output"
         ]
 
+    # Security: Only allow relative paths in current directory
+    current_dir = Path.cwd()
+
     for dir_name in directories:
-        dir_path = Path(dir_name)
-        if dir_path.exists():
+        # Validate path is safe
+        if ".." in dir_name or dir_name.startswith("/") or dir_name.startswith("~"):
+            console.print(f"[red]Security: Skipping unsafe path: {dir_name}[/red]")
+            continue
+
+        dir_path = current_dir / dir_name
+
+        # Additional safety check: ensure path is within current directory
+        try:
+            dir_path.resolve().relative_to(current_dir)
+        except ValueError:
+            console.print(f"[red]Security: Path outside current directory: {dir_name}[/red]")
+            continue
+
+        if dir_path.exists() and dir_path.is_dir():
             try:
                 shutil.rmtree(dir_path)
                 console.print(f"[green]Cleaned up:[/green] {dir_name}")
@@ -225,18 +242,19 @@ def create_zarr_from_rasters(
         raise
 
 
-def create_sample_zarr(output_path: Path, shape: tuple = (10, 100, 100)) -> Path:
+def create_sample_zarr(output_path: Path, n_species: int = 3) -> Path:
     """
     Create a sample zarr array for testing with error handling.
 
     Args:
         output_path: Output path for zarr
-        shape: Shape of array (species, height, width)
+        n_species: Number of species layers (plus total)
 
     Returns:
         Path to created zarr array
     """
     try:
+        shape = (n_species + 1, 100, 100)  # +1 for total layer
         z = zarr.open_array(
             str(output_path),
             mode='w',
@@ -247,6 +265,8 @@ def create_sample_zarr(output_path: Path, shape: tuple = (10, 100, 100)) -> Path
 
         # Generate sample data
         np.random.seed(42)
+        total_biomass = np.zeros((shape[1], shape[2]), dtype='float32')
+
         for i in range(shape[0]):
             # Create species distribution with spatial pattern
             x = np.linspace(0, 10, shape[1])
@@ -254,17 +274,22 @@ def create_sample_zarr(output_path: Path, shape: tuple = (10, 100, 100)) -> Path
             X, Y = np.meshgrid(x, y)
 
             # Different pattern for each species
-            if i == 0:  # Total biomass
-                data = np.abs(np.sin(X) * np.cos(Y) * 100)
+            if i == 0:  # Skip total for now
+                continue
             else:
                 freq = i * 0.5
                 data = np.abs(np.sin(X * freq) * np.cos(Y * freq) * 50)
+                z[i, :, :] = data
+                total_biomass += data
 
-            z[i, :, :] = data
+        # Store total biomass in first layer
+        z[0, :, :] = total_biomass
 
         # Add metadata
         z.attrs['crs'] = 'EPSG:32617'
-        z.attrs['layer_names'] = ['total_biomass'] + [f'species_{i}' for i in range(1, shape[0])]
+        z.attrs['species_codes'] = ['TOTAL'] + [f'SPCD{i:04d}' for i in range(1, n_species + 1)]
+        z.attrs['species_names'] = ['All Species Combined'] + [f'Species {i}' for i in range(1, n_species + 1)]
+        z.attrs['layer_names'] = ['total_biomass'] + [f'species_{i}' for i in range(1, n_species + 1)]
 
         console.print(f"[green]Created sample zarr:[/green] {output_path}")
         return output_path
@@ -291,51 +316,98 @@ def print_zarr_info(zarr_path: Path) -> None:
         console.print(f"[red]Error reading zarr info: {e}[/red]")
 
 
-def calculate_basic_stats(data: np.ndarray, name: str = "Data") -> Dict[str, float]:
+def calculate_basic_stats(zarr_path: Path, sample_size: Optional[int] = 1000) -> Dict[str, Any]:
     """
-    Calculate basic statistics for an array with error handling.
+    Calculate basic statistics from a zarr array.
 
     Args:
-        data: Input array
-        name: Name for display
+        zarr_path: Path to zarr array
+        sample_size: Size of sample to use (None for full array)
 
     Returns:
         Dictionary of statistics
     """
     try:
-        # Filter valid data
-        valid_data = data[data > 0]
+        z = zarr.open_array(str(zarr_path), mode='r')
 
-        if len(valid_data) == 0:
-            console.print(f"[yellow]Warning: No valid data found for {name}[/yellow]")
-            return {
-                'min': 0.0,
-                'max': 0.0,
-                'mean': 0.0,
-                'std': 0.0,
-                'coverage': 0.0
-            }
+        # Sample data if specified
+        if sample_size and z.shape[1] > sample_size:
+            data = z[:, :sample_size, :sample_size]
+            console.print(f"Sampling {sample_size}x{sample_size} pixels for statistics")
+        else:
+            data = z[:]
+
+        # Calculate stats
+        total_biomass = data[0]
+        forest_mask = total_biomass > 0
+        forest_pixels = np.sum(forest_mask)
 
         stats = {
-            'min': float(np.min(valid_data)),
-            'max': float(np.max(valid_data)),
-            'mean': float(np.mean(valid_data)),
-            'std': float(np.std(valid_data)),
-            'coverage': float(len(valid_data) / data.size * 100)
+            'total_pixels': total_biomass.size,
+            'forest_pixels': int(forest_pixels),
+            'forest_coverage_pct': 100 * forest_pixels / total_biomass.size,
+            'mean_biomass': float(np.mean(total_biomass[forest_mask])) if forest_pixels > 0 else 0,
+            'max_biomass': float(np.max(total_biomass)) if forest_pixels > 0 else 0,
+            'total_biomass_mg': float(np.sum(total_biomass))
         }
 
-        console.print(f"\n[bold]{name} Statistics:[/bold]")
-        console.print(f"  Min: {stats['min']:.2f}")
-        console.print(f"  Max: {stats['max']:.2f}")
-        console.print(f"  Mean: {stats['mean']:.2f}")
-        console.print(f"  Std: {stats['std']:.2f}")
-        console.print(f"  Coverage: {stats['coverage']:.1f}%")
+        # Species richness
+        if data.shape[0] > 1:
+            species_present = np.sum(data[1:] > 0, axis=0)  # Skip TOTAL layer
+            stats['mean_richness'] = float(np.mean(species_present[forest_mask])) if forest_pixels > 0 else 0
+            stats['max_richness'] = int(np.max(species_present)) if forest_pixels > 0 else 0
+        else:
+            stats['mean_richness'] = 0
+            stats['max_richness'] = 0
+
+        # Print summary
+        console.print(f"\n[bold]Forest Statistics:[/bold]")
+        console.print(f"  Forest coverage: {stats['forest_coverage_pct']:.1f}%")
+        console.print(f"  Mean biomass: {stats['mean_biomass']:.2f} Mg/ha")
+        console.print(f"  Max biomass: {stats['max_biomass']:.2f} Mg/ha")
+        if data.shape[0] > 1:
+            console.print(f"  Mean species richness: {stats['mean_richness']:.2f}")
+            console.print(f"  Max species richness: {stats['max_richness']}")
 
         return stats
 
     except Exception as e:
         console.print(f"[red]Error calculating statistics: {e}[/red]")
         return {}
+
+
+def add_zarr_metadata(
+    zarr_array: zarr.Array,
+    species_codes: List[str],
+    species_names: List[str],
+    crs: Any = None,
+    transform: Any = None,
+    bounds: Any = None
+) -> None:
+    """Add standard metadata to a zarr array.
+
+    Args:
+        zarr_array: Zarr array to add metadata to
+        species_codes: List of species codes
+        species_names: List of species names
+        crs: Coordinate reference system
+        transform: Affine transform
+        bounds: Bounding box
+    """
+    zarr_array.attrs.update({
+        'species_codes': species_codes,
+        'species_names': species_names,
+    })
+
+    if crs is not None:
+        zarr_array.attrs['crs'] = str(crs)
+    if transform is not None:
+        zarr_array.attrs['transform'] = list(transform) if hasattr(transform, '__iter__') else transform
+    if bounds is not None:
+        zarr_array.attrs['bounds'] = list(bounds) if hasattr(bounds, '__iter__') else bounds
+
+    zarr_array.attrs['description'] = 'Forest biomass by species'
+    zarr_array.attrs['units'] = 'Mg/ha'
 
 
 def validate_species_codes(api, species_codes: List[str]) -> List[str]:

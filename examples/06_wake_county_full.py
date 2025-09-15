@@ -16,8 +16,8 @@ import numpy as np
 import zarr
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from bigmap import (
-    BigMapAPI,
+from bigmap import BigMapAPI
+from bigmap.examples import (
     calculate_basic_stats,
     safe_download_species,
     safe_load_zarr_with_memory_check,

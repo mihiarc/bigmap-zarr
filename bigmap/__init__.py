@@ -17,19 +17,6 @@ from bigmap.api import BigMapAPI
 # Configuration management for advanced users
 from bigmap.config import BigMapSettings, load_settings, save_settings
 
-# Example utilities (for running examples)
-from bigmap.utils.examples import (
-    AnalysisConfig,
-    cleanup_example_outputs,
-    safe_download_species,
-    safe_load_zarr_with_memory_check,
-    create_zarr_from_rasters,
-    create_sample_zarr,
-    print_zarr_info,
-    calculate_basic_stats,
-    validate_species_codes
-)
-
 # Define what gets imported with "from bigmap import *"
 __all__ = [
     # Main API (primary interface)
@@ -39,17 +26,6 @@ __all__ = [
     "BigMapSettings",
     "load_settings",
     "save_settings",
-
-    # Example utilities
-    "AnalysisConfig",
-    "cleanup_example_outputs",
-    "safe_download_species",
-    "safe_load_zarr_with_memory_check",
-    "create_zarr_from_rasters",
-    "create_sample_zarr",
-    "print_zarr_info",
-    "calculate_basic_stats",
-    "validate_species_codes",
 
     # Package metadata
     "__version__",

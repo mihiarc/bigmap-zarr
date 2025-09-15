@@ -11,7 +11,7 @@ Demonstrates the flexible calculation framework:
 
 from pathlib import Path
 import numpy as np
-from bigmap import create_sample_zarr, print_zarr_info, AnalysisConfig
+from bigmap.examples import create_sample_zarr, print_zarr_info, AnalysisConfig
 from bigmap.config import BigMapSettings, CalculationConfig
 from bigmap.core.processors.forest_metrics import ForestMetricsProcessor
 from bigmap.core.calculations import ForestCalculation, registry

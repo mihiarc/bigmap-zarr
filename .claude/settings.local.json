@@ -32,7 +32,9 @@
       "Bash(sudo apt:*)",
       "Bash(sudo apt install:*)",
       "Read(//usr/**)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(source:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

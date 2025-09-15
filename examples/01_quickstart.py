@@ -9,7 +9,8 @@ Takes about 2 minutes to run.
 """
 
 from pathlib import Path
-from bigmap import BigMapAPI, print_zarr_info, calculate_basic_stats, safe_download_species
+from bigmap import BigMapAPI
+from bigmap.examples import print_zarr_info, calculate_basic_stats, safe_download_species
 
 
 def main():

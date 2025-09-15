@@ -137,8 +137,8 @@ class TestExamplesSmoke:
             pytest.fail(f"Syntax error in {example_file}: {e}")
 
     def test_utils_module(self):
-        """Test that the utils module can be imported from bigmap."""
-        from bigmap import (
+        """Test that the utils module can be imported from bigmap.examples."""
+        from bigmap.examples import (
             AnalysisConfig,
             cleanup_example_outputs,
             safe_download_species,
@@ -198,7 +198,7 @@ class TestExamplesSmoke:
 
     def test_cleanup_function_works(self):
         """Test that the cleanup function works correctly."""
-        from bigmap import cleanup_example_outputs
+        from bigmap.examples import cleanup_example_outputs
 
         # Create test directories
         test_dirs = ["test_quickstart_data", "test_configs", "test_output"]
@@ -227,7 +227,7 @@ class TestExampleIntegration:
 
     def test_analysis_config_usage(self):
         """Test that AnalysisConfig works as expected."""
-        from bigmap import AnalysisConfig
+        from bigmap.examples import AnalysisConfig
 
         # Test default config
         config = AnalysisConfig()
@@ -246,7 +246,7 @@ class TestExampleIntegration:
 
     def test_safe_download_with_mock(self):
         """Test safe_download_species with mocked API."""
-        from bigmap import safe_download_species
+        from bigmap.examples import safe_download_species
 
         mock_api = MagicMock()
         mock_api.download_species.return_value = [Path("test1.tif"), Path("test2.tif")]
@@ -263,7 +263,7 @@ class TestExampleIntegration:
 
     def test_safe_download_with_retry(self):
         """Test that safe_download_species retries on failure."""
-        from bigmap import safe_download_species
+        from bigmap.examples import safe_download_species
 
         mock_api = MagicMock()
         # Fail twice, then succeed

@@ -12,7 +12,7 @@ Comprehensive species analysis including:
 from pathlib import Path
 import numpy as np
 import zarr
-from bigmap import (
+from bigmap.examples import (
     create_sample_zarr,
     calculate_basic_stats,
     safe_load_zarr_with_memory_check,
