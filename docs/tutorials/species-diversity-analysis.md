@@ -16,6 +16,13 @@ We'll analyze forest species diversity across North Carolina by:
 - Basic Python knowledge
 - ~5GB disk space for data
 
+## Example Code
+
+Complete working examples are available in the `examples/` directory:
+- **Quick start**: See `examples/01_quickstart.py` for a minimal example
+- **Species analysis**: See `examples/05_species_analysis.py` for comprehensive species analysis
+- **Full workflow**: See `examples/06_wake_county_full.py` for complete case study
+
 ## Step 1: Download Species Data
 
 First, let's see what species are available:
@@ -44,83 +51,34 @@ bigmap download \
 
 ## Step 2: Create Zarr Array
 
-Convert the downloaded GeoTIFF files to a zarr array:
+Convert the downloaded GeoTIFF files to a zarr array.
+
+**See `examples/utils.py`** for the reusable `create_zarr_from_rasters()` function.
 
 ```python
-# create_zarr.py
-import zarr
-import rasterio
-import numpy as np
+# Using the shared utility function
+from examples.utils import create_zarr_from_rasters
 from pathlib import Path
 
-def create_biomass_zarr(raster_dir, output_path):
-    """Create zarr array from species raster files."""
-    raster_files = sorted(Path(raster_dir).glob("*.tif"))
-    print(f"Found {len(raster_files)} species rasters")
-    
-    # Read first raster for dimensions and metadata
-    with rasterio.open(raster_files[0]) as src:
-        height, width = src.shape
-        transform = src.transform
-        crs = src.crs
-        bounds = src.bounds
-    
-    # Create zarr array with total + species layers
-    n_layers = len(raster_files) + 1  # +1 for total biomass
-    z = zarr.open_array(
-        output_path,
-        mode='w',
-        shape=(n_layers, height, width),
-        chunks=(1, 1000, 1000),
-        dtype='f4'
-    )
-    
-    # Load species data and calculate total
-    total_biomass = np.zeros((height, width), dtype=np.float32)
-    species_codes = ['TOTAL']
-    species_names = ['All Species Combined']
-    
-    for i, raster_file in enumerate(raster_files, 1):
-        print(f"Loading {raster_file.name}...")
-        with rasterio.open(raster_file) as src:
-            data = src.read(1).astype(np.float32)
-            z[i] = data
-            total_biomass += data
-            
-            # Extract species info from filename
-            species_codes.append(raster_file.stem)
-            species_names.append(raster_file.stem)  # Could map to real names
-    
-    # Store total biomass
-    z[0] = total_biomass
-    
-    # Add metadata
-    z.attrs.update({
-        'species_codes': species_codes,
-        'species_names': species_names,
-        'crs': str(crs),
-        'transform': list(transform),
-        'bounds': list(bounds),
-        'units': 'Mg/ha',
-        'description': 'NC forest biomass by species'
-    })
-    
-    print(f"Created zarr array: {output_path}")
-    print(f"Shape: {z.shape}")
-    print(f"Species: {species_codes}")
-    
-    return output_path
-
 # Create the zarr array
-zarr_path = create_biomass_zarr(
-    "tutorial_data/", 
-    "tutorial_data/nc_biomass.zarr"
+zarr_path = create_zarr_from_rasters(
+    raster_dir=Path("tutorial_data/"),
+    output_path=Path("tutorial_data/nc_biomass.zarr"),
+    chunk_size=(1, 1000, 1000)
 )
+
+print(f"Created zarr array: {zarr_path}")
 ```
 
-Run the script:
-```bash
-uv run python create_zarr.py
+Or use the BigMap API directly:
+```python
+from bigmap import BigMapAPI
+
+api = BigMapAPI()
+zarr_path = api.create_zarr(
+    input_dir="tutorial_data/",
+    output_path="tutorial_data/nc_biomass.zarr"
+)
 ```
 
 ## Step 3: Configure Diversity Analysis
@@ -175,6 +133,8 @@ Execute the diversity analysis:
 ```bash
 bigmap calculate tutorial_data/nc_biomass.zarr --config diversity_config.yaml
 ```
+
+**See `examples/04_calculations.py`** for detailed calculation examples and custom metrics.
 
 ## Step 5: Visualize Results
 
@@ -322,6 +282,13 @@ In this tutorial, we:
 4. Visualized the results as maps
 5. Identified diversity hotspots
 
+## Complete Examples
+
+For complete, runnable code:
+- **`examples/01_quickstart.py`** - Minimal working example
+- **`examples/05_species_analysis.py`** - Comprehensive species and diversity analysis
+- **`examples/06_wake_county_full.py`** - Full workflow with publication outputs
+
 ## Next Steps
 
 - Try different biomass thresholds for species presence
@@ -333,6 +300,6 @@ In this tutorial, we:
 ## Tips
 
 1. **Memory Management**: The chunked processing handles large datasets efficiently
-2. **Custom Calculations**: Add your own metrics to the calculation registry
+2. **Custom Calculations**: See `examples/04_calculations.py` for custom metrics
 3. **Output Formats**: Use NetCDF for xarray integration, Zarr for large outputs
 4. **Visualization**: Export to GeoTIFF for use in QGIS or ArcGIS

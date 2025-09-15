@@ -16,7 +16,13 @@
       "Bash(gh pr diff:*)",
       "Bash(gh issue close:*)",
       "Bash(gh issue:*)",
-      "Bash(uv pip:*)"
+      "Bash(uv pip:*)",
+      "Bash(echo $SHELL)",
+      "Read(//home/mihiarc/**)",
+      "Bash(export PATH=\"$HOME/.local/bin:$PATH\")",
+      "Bash(echo $PATH)",
+      "Bash(claude --version)",
+      "Bash(source ~/.bashrc)"
     ],
     "deny": [],
     "ask": []
