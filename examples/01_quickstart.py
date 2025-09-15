@@ -31,7 +31,9 @@ def main():
     wake_bbox = (-8792000, 4274000, -8732000, 4334000)  # xmin, ymin, xmax, ymax
 
     try:
-        files = api.download_species(
+        # Use safe wrapper with retry logic and error handling
+        files = safe_download_species(
+            api,
             bbox=wake_bbox,
             crs="3857",  # Web Mercator
             species_codes=["0131", "0068"],  # Loblolly Pine, Red Maple

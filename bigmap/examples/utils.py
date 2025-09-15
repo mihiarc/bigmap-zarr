@@ -19,6 +19,40 @@ from typing import Any
 console = Console()
 
 
+def _validate_bbox(bbox: Tuple[float, float, float, float], crs: str) -> None:
+    """
+    Validate bounding box coordinates for given CRS.
+
+    Args:
+        bbox: Bounding box coordinates (xmin, ymin, xmax, ymax)
+        crs: Coordinate reference system
+
+    Raises:
+        ValueError: If bbox is invalid
+    """
+    xmin, ymin, xmax, ymax = bbox
+
+    # Basic geometric validation
+    if xmin >= xmax or ymin >= ymax:
+        raise ValueError("Invalid bbox: min values must be less than max values")
+
+    # CRS-specific validation
+    if crs in ["4326", "4269"]:  # WGS84/NAD83
+        if not (-180 <= xmin <= 180 and -180 <= xmax <= 180):
+            raise ValueError("Longitude out of range for geographic CRS")
+        if not (-90 <= ymin <= 90 and -90 <= ymax <= 90):
+            raise ValueError("Latitude out of range for geographic CRS")
+    elif crs in ["3857"]:  # Web Mercator
+        # Approximate bounds for Web Mercator (covers most of Earth)
+        web_mercator_max = 20037508.34  # ~180 degrees
+        if not (-web_mercator_max <= xmin <= web_mercator_max and
+                -web_mercator_max <= xmax <= web_mercator_max):
+            raise ValueError("X coordinates out of range for Web Mercator")
+        if not (-web_mercator_max <= ymin <= web_mercator_max and
+                -web_mercator_max <= ymax <= web_mercator_max):
+            raise ValueError("Y coordinates out of range for Web Mercator")
+
+
 @dataclass
 class AnalysisConfig:
     """Configuration for analysis parameters to avoid magic numbers."""
@@ -76,7 +110,9 @@ def cleanup_example_outputs(directories: Optional[List[str]] = None) -> None:
                 console.print(f"[yellow]Warning: Could not remove {dir_name}: {e}[/yellow]")
 
 
-def safe_download_species(api, state: str, county: Optional[str] = None,
+def safe_download_species(api, state: Optional[str] = None, county: Optional[str] = None,
+                         bbox: Optional[Tuple[float, float, float, float]] = None,
+                         crs: str = "4326",
                          species_codes: List[str] = None,
                          output_dir: str = "species_data",
                          max_retries: int = 3) -> List[Path]:
@@ -85,8 +121,10 @@ def safe_download_species(api, state: str, county: Optional[str] = None,
 
     Args:
         api: BigMapAPI instance
-        state: State name
+        state: State name (optional if bbox provided)
         county: County name (optional)
+        bbox: Bounding box coordinates (xmin, ymin, xmax, ymax)
+        crs: Coordinate reference system for bbox
         species_codes: List of species codes to download
         output_dir: Output directory for downloads
         max_retries: Maximum number of retry attempts
@@ -97,12 +135,18 @@ def safe_download_species(api, state: str, county: Optional[str] = None,
     Raises:
         ConnectionError: If download fails after all retries
     """
+    # Validate bbox if provided
+    if bbox:
+        _validate_bbox(bbox, crs)
+
     attempt = 0
     while attempt < max_retries:
         try:
             files = api.download_species(
                 state=state,
                 county=county,
+                bbox=bbox,
+                crs=crs,
                 species_codes=species_codes,
                 output_dir=output_dir
             )
@@ -325,7 +369,7 @@ def print_zarr_info(zarr_path: Path) -> None:
                             species_list.append(f"{code} ({name})")
                     if species_list:
                         console.print(f"    {', '.join(species_list)}{'...' if num_species > 3 else ''}")
-        except (KeyError, ValueError):
+        except Exception:
             # Fall back to legacy array format
             z = zarr.open_array(str(zarr_path), mode='r')
             console.print(f"\n[cyan]Zarr Array Info:[/cyan]")
@@ -357,7 +401,7 @@ def calculate_basic_stats(zarr_path: Path, sample_size: Optional[int] = 1000) ->
         try:
             root = zarr.open_group(str(zarr_path), mode='r')
             z = root['biomass']
-        except (KeyError, ValueError):
+        except Exception:
             # Fall back to legacy array format
             z = zarr.open_array(str(zarr_path), mode='r')
 
