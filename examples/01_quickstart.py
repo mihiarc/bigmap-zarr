@@ -9,8 +9,7 @@ Takes about 2 minutes to run.
 """
 
 from pathlib import Path
-from bigmap import BigMapAPI
-from examples.utils import print_zarr_info, calculate_basic_stats
+from bigmap import BigMapAPI, print_zarr_info, calculate_basic_stats, safe_download_species
 
 
 def main():
@@ -23,13 +22,18 @@ def main():
 
     # 1. Download species data (just 2 species for speed)
     print("\n1. Downloading forest data...")
-    files = api.download_species(
-        state="North Carolina",
-        county="Wake",
-        species_codes=["0131", "0068"],  # Loblolly Pine, Red Maple
-        output_dir="quickstart_data"
-    )
-    print(f"   Downloaded {len(files)} species files")
+    try:
+        files = safe_download_species(
+            api,
+            state="North Carolina",
+            county="Wake",
+            species_codes=["0131", "0068"],  # Loblolly Pine, Red Maple
+            output_dir="quickstart_data"
+        )
+        print(f"   Downloaded {len(files)} species files")
+    except Exception as e:
+        print(f"Download failed: {e}")
+        return
 
     # 2. Create Zarr store
     print("\n2. Creating Zarr store...")

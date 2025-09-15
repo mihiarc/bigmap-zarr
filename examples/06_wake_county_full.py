@@ -16,10 +16,16 @@ import numpy as np
 import zarr
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from bigmap import BigMapAPI
+from bigmap import (
+    BigMapAPI,
+    calculate_basic_stats,
+    safe_download_species,
+    safe_load_zarr_with_memory_check,
+    AnalysisConfig,
+    cleanup_example_outputs
+)
 from bigmap.visualization.mapper import ZarrMapper
 from bigmap.visualization.plots import set_plot_style, save_figure
-from examples.utils import add_zarr_metadata, calculate_basic_stats
 from rich.console import Console
 
 console = Console()

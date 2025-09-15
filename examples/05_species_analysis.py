@@ -12,10 +12,15 @@ Comprehensive species analysis including:
 from pathlib import Path
 import numpy as np
 import zarr
+from bigmap import (
+    create_sample_zarr,
+    calculate_basic_stats,
+    safe_load_zarr_with_memory_check,
+    AnalysisConfig
+)
 from bigmap.config import BigMapSettings, CalculationConfig
 from bigmap.core.processors.forest_metrics import ForestMetricsProcessor
 from bigmap.core.calculations import SpeciesProportion, SpeciesGroupProportion, registry
-from examples.utils import create_sample_zarr, calculate_basic_stats
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -39,15 +44,20 @@ def analyze_species_proportions(zarr_path: Path):
     console.print("\n[bold blue]Species Proportion Analysis[/bold blue]")
     console.print("-" * 40)
 
-    # Load zarr data
-    z = zarr.open_array(str(zarr_path), mode='r')
-    species_codes = z.attrs.get('species_codes', [])
-    species_names = z.attrs.get('species_names', [])
+    # Load zarr data with memory management
+    config = AnalysisConfig()
+    try:
+        z = zarr.open_array(str(zarr_path), mode='r')
+        species_codes = z.attrs.get('species_codes', [])
+        species_names = z.attrs.get('species_names', [])
 
-    console.print(f"Analyzing {len(species_codes) - 1} species")  # -1 for TOTAL
+        console.print(f"Analyzing {len(species_codes) - 1} species")  # -1 for TOTAL
 
-    # Sample data for analysis
-    sample = z[:, :500, :500] if z.shape[1] > 500 else z[:]
+        # Sample data for analysis with memory safety
+        sample = safe_load_zarr_with_memory_check(zarr_path, config)
+    except Exception as e:
+        console.print(f"[red]Error loading data: {e}[/red]")
+        return
 
     # Calculate total biomass and forest mask
     total_biomass = sample[0]

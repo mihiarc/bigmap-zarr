@@ -75,17 +75,8 @@ def create_county_configs():
     configs = []
     for county, state in counties:
         try:
-            # Create configuration
-            config = LocationConfig(location_type="county")
-            config._config['location']['name'] = f"{county} County, {state}"
-            config._config['location']['county'] = county
-            config._config['location']['state'] = state
-
-            # Detect state plane CRS
-            state_abbr = STATE_ABBR.get(state.lower())
-            if state_abbr:
-                config._detect_state_plane_crs(state_abbr)
-
+            # Create configuration using public method
+            config = LocationConfig.from_county(county, state)
             configs.append(config)
 
             # Save

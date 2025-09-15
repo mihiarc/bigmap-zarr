@@ -7,8 +7,8 @@ Each example is self-contained and can be run independently.
 """
 
 from pathlib import Path
-from bigmap import BigMapAPI, BigMapSettings, CalculationConfig
-from examples.utils import create_sample_zarr, print_zarr_info
+from bigmap import BigMapAPI, create_sample_zarr, print_zarr_info
+from bigmap.config import BigMapSettings
 
 
 def example_1_list_species():

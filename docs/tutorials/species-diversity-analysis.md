@@ -2,13 +2,53 @@
 
 This tutorial demonstrates how to perform a comprehensive species diversity analysis using BigMap.
 
+## Scientific Background
+
+Species diversity is a fundamental measure of ecosystem health and resilience. This tutorial covers three key diversity metrics:
+
+### Shannon Diversity Index (H')
+The Shannon diversity index (Shannon, 1948) measures both species richness and evenness:
+
+**H' = -Σ(pi × ln(pi))**
+
+Where pi is the proportion of species i. Higher values indicate greater diversity.
+- Values typically range from 0 to 5
+- H' = 0 indicates a monoculture
+- H' > 3 indicates high diversity
+
+### Simpson Diversity Index (D)
+The Simpson index (Simpson, 1949) represents the probability that two randomly selected individuals belong to different species:
+
+**D = 1 - Σ(pi²)**
+
+Often reported as 1/D (inverse Simpson):
+- Values range from 0 to 1 (or 1 to ∞ for inverse)
+- Higher values indicate greater diversity
+- Less sensitive to rare species than Shannon
+
+### Pielou's Evenness (J)
+Pielou's evenness (Pielou, 1966) measures how evenly species are distributed:
+
+**J = H' / ln(S)**
+
+Where S is the number of species.
+- Values range from 0 to 1
+- J = 1 indicates perfect evenness
+- J < 0.5 suggests dominance by few species
+
+### When to Use Each Index
+- **Shannon**: General biodiversity assessment, sensitive to rare species
+- **Simpson**: When dominance patterns are important
+- **Species Richness**: Simple count when presence/absence is sufficient
+- **Evenness**: To assess community balance independent of richness
+
 ## Overview
 
 We'll analyze forest species diversity across North Carolina by:
 1. Downloading species biomass data
 2. Creating a zarr array for efficient processing
 3. Calculating diversity metrics
-4. Visualizing the results
+4. Visualizing and interpreting the results
 
 ## Prerequisites
 
@@ -273,6 +313,45 @@ print(f"Average size: {np.mean(hotspot_sizes):.1f} hectares")
 print(f"Largest hotspot: {max(hotspot_sizes):.1f} hectares")
 ```
 
+## Interpreting Results
+
+### Understanding Diversity Values
+
+**Species Richness (S)**
+- **Low (1-3)**: Monoculture or degraded forest
+- **Medium (4-7)**: Typical managed forest
+- **High (8+)**: Mature, mixed forest ecosystem
+
+**Shannon Diversity (H')**
+- **< 1.0**: Very low diversity, dominated by 1-2 species
+- **1.0-2.0**: Low to moderate diversity
+- **2.0-3.0**: Moderate to high diversity, healthy forest
+- **> 3.0**: Very high diversity, exceptional biodiversity
+
+**Simpson Index (1/D)**
+- **< 2**: Low diversity with strong dominance
+- **2-5**: Moderate diversity
+- **> 5**: High diversity with even species distribution
+
+**Evenness (J)**
+- **< 0.5**: Strong dominance by few species
+- **0.5-0.7**: Moderate evenness
+- **> 0.7**: High evenness, balanced community
+
+### Ecological Implications
+
+High diversity areas often indicate:
+- Mature forest stands
+- Ecotone transitions between forest types
+- Areas with varied topography or hydrology
+- Minimal human disturbance
+
+Low diversity areas may indicate:
+- Recent disturbance (fire, harvest, disease)
+- Plantations or managed stands
+- Environmental stress (drought, poor soils)
+- Early successional stages
+
 ## Summary
 
 In this tutorial, we:
@@ -281,6 +360,7 @@ In this tutorial, we:
 3. Calculated multiple diversity metrics (richness, Shannon, Simpson, evenness)
 4. Visualized the results as maps
 5. Identified diversity hotspots
+6. Learned to interpret diversity metrics in ecological context
 
 ## Complete Examples
 
@@ -303,3 +383,13 @@ For complete, runnable code:
 2. **Custom Calculations**: See `examples/04_calculations.py` for custom metrics
 3. **Output Formats**: Use NetCDF for xarray integration, Zarr for large outputs
 4. **Visualization**: Export to GeoTIFF for use in QGIS or ArcGIS
+
+## References
+
+- Shannon, C.E. (1948). A mathematical theory of communication. *Bell System Technical Journal*, 27(3), 379-423.
+- Simpson, E.H. (1949). Measurement of diversity. *Nature*, 163(4148), 688.
+- Pielou, E.C. (1966). The measurement of diversity in different types of biological collections. *Journal of Theoretical Biology*, 13, 131-144.
+- Magurran, A.E. (2004). *Measuring biological diversity*. Blackwell Publishing.
+- USDA Forest Service. (2018). *BIGMAP 2018 Forest Biomass Dataset*. Forest Inventory and Analysis Program.
+
+For complete citations and how to cite BigMap in your work, see [CITATIONS.md](../../CITATIONS.md).
