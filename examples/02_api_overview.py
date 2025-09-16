@@ -169,46 +169,39 @@ def example_6_visualization():
     sample_path = create_sample_zarr(Path("temp_sample.zarr"))
     api = BigMapAPI()
 
-    # Create output directory for all maps
-    maps_dir = Path("example_maps")
-    maps_dir.mkdir(exist_ok=True)
-
     # Different map types
     map_types = ["diversity", "species", "richness", "comparison"]
-    all_created_files = []
 
     for map_type in map_types:
-        output_subdir = maps_dir / map_type
         if map_type == "species":
             maps = api.create_maps(
                 zarr_path=sample_path,
                 map_type=map_type,
-                output_dir=str(output_subdir),
+                output_dir=f"maps_{map_type}",
                 show_all=True
             )
         elif map_type == "comparison":
             maps = api.create_maps(
                 zarr_path=sample_path,
                 map_type=map_type,
-                output_dir=str(output_subdir),
+                output_dir=f"maps_{map_type}",
                 species=["0001", "0002"]  # Compare first two species
             )
         else:
             maps = api.create_maps(
                 zarr_path=sample_path,
                 map_type=map_type,
-                output_dir=str(output_subdir)
+                output_dir=f"maps_{map_type}"
             )
-        print(f"  {map_type}: Created {len(maps)} maps in {output_subdir}")
-        all_created_files.extend(maps)
+        print(f"{map_type}: Created {len(maps)} maps")
 
-    print(f"\n📁 All visualization maps saved to: {maps_dir.absolute()}")
-    print(f"   Total files created: {len(all_created_files)}")
-
-    # Clean up only the temp zarr, keep the maps for user to see
+    # Clean up
     import shutil
     shutil.rmtree(sample_path)
-    print("\nNote: Maps are preserved in 'example_maps/' for your review")
+    for map_type in map_types:
+        output_dir = Path(f"maps_{map_type}")
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
 
 
 def example_7_batch_processing():
