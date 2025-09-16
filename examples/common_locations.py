@@ -20,9 +20,10 @@ COUNTIES = {
     },
     "harris_tx": {
         "name": "Harris County, Texas",
-        "bbox": (-95.91, 29.52, -95.01, 30.11),
-        "crs": "4326",
-        "description": "Houston metropolitan area"
+        "bbox": (-10688000, 3450000, -10575000, 3537000),  # Web Mercator approximation
+        "crs": "3857",
+        "description": "Houston metropolitan area",
+        "bbox_wgs84": (-95.91, 29.52, -95.01, 30.11)  # For reference
     },
     "king_wa": {
         "name": "King County, Washington",
@@ -36,9 +37,10 @@ COUNTIES = {
 TEST_AREAS = {
     "raleigh_downtown": {
         "name": "Downtown Raleigh",
-        "bbox": (-78.66, 35.77, -78.61, 35.79),
-        "crs": "4326",
-        "description": "Small area for quick testing"
+        "bbox": (-8755000, 4295000, -8750000, 4300000),  # Very small area in Web Mercator
+        "crs": "3857",
+        "description": "Small area for quick testing",
+        "bbox_wgs84": (-78.66, 35.77, -78.61, 35.79)  # For reference
     },
     "mt_hood": {
         "name": "Mt. Hood National Forest",
