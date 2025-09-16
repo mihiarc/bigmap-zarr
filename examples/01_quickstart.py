@@ -23,25 +23,26 @@ def main():
 
     # 1. Download species data (just 2 species for speed)
     print("\n1. Downloading forest data...")
-    print("   Using hardcoded bounding box for Wake County, NC")
-
-    # Wake County, NC bounding box (Web Mercator EPSG:3857)
-    # Note: For other locations, download county shapefiles manually
-    # from https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-geodatabase-file.html
-    wake_bbox = (-8792000, 4274000, -8732000, 4334000)  # xmin, ymin, xmax, ymax
+    print("   Location: Wake County, NC")
 
     try:
-        # Use safe wrapper with retry logic and error handling
-        files = safe_download_species(
-            api,
-            bbox=wake_bbox,
-            crs="3857",  # Web Mercator
+        # Use the API's proper state/county parameters
+        files = api.download_species(
+            state="North Carolina",
+            county="Wake",
             species_codes=["0131", "0068"],  # Loblolly Pine, Red Maple
             output_dir="quickstart_data"
         )
         print(f"   Downloaded {len(files)} species files")
     except Exception as e:
         print(f"Download failed: {e}")
+        print("\nNote: If boundary download fails, you can use a custom bounding box:")
+        print("  files = api.download_species(")
+        print("      bbox=(-78.97, 35.57, -78.25, 36.08),  # Wake County approx bounds")
+        print("      crs='4326',  # WGS84")
+        print("      species_codes=['0131', '0068'],")
+        print("      output_dir='quickstart_data'")
+        print("  )")
         return
 
     # 2. Create Zarr store
