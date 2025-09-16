@@ -144,7 +144,7 @@ def example_5_calculations():
             ),
             CalculationConfig(
                 name="total_biomass",
-                output_format="netcdf"
+                output_format="geotiff"  # Changed from netcdf to geotiff
             )
         ]
     )
