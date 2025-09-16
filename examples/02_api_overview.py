@@ -160,18 +160,23 @@ def example_5_calculations():
 
 
 def example_6_visualization():
-    """Creating visualizations."""
+    """Creating visualizations (demonstration with sample data)."""
     print("\n" + "=" * 60)
-    print("Example 6: Visualization Options")
+    print("Example 6: Visualization Options (Sample Data Demo)")
     print("=" * 60)
 
-    # Create sample data
+    print("Note: This example uses synthetic data to demonstrate the API.")
+    print("For real forest visualizations, see examples 01 or 06 which use")
+    print("actual BIGMAP data downloads.\n")
+
+    # Create sample data for demonstration
     sample_path = create_sample_zarr(Path("temp_sample.zarr"))
     api = BigMapAPI()
 
     # Different map types
     map_types = ["diversity", "species", "richness", "comparison"]
 
+    print("Demonstrating visualization API with sample data:")
     for map_type in map_types:
         if map_type == "species":
             maps = api.create_maps(
@@ -193,15 +198,18 @@ def example_6_visualization():
                 map_type=map_type,
                 output_dir=f"maps_{map_type}"
             )
-        print(f"{map_type}: Created {len(maps)} maps")
+        print(f"  {map_type}: Created {len(maps)} maps (sample data)")
 
-    # Clean up
+    # Clean up - remove sample visualizations as they're not real data
     import shutil
     shutil.rmtree(sample_path)
     for map_type in map_types:
         output_dir = Path(f"maps_{map_type}")
         if output_dir.exists():
             shutil.rmtree(output_dir)
+
+    print("\n💡 To create visualizations with real forest data:")
+    print("   Run examples/01_quickstart.py or examples/06_wake_county_full.py")
 
 
 def example_7_batch_processing():
