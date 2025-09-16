@@ -10,7 +10,8 @@ Takes about 2 minutes to run.
 
 from pathlib import Path
 from bigmap import BigMapAPI
-from bigmap.examples import print_zarr_info, calculate_basic_stats, safe_download_species
+from bigmap.examples import print_zarr_info, calculate_basic_stats
+from examples.common_locations import get_location_bbox
 
 
 def main():
@@ -25,25 +26,16 @@ def main():
     print("\n1. Downloading forest data...")
     print("   Location: Wake County, NC")
 
-    try:
-        # Use the API's proper state/county parameters
-        files = api.download_species(
-            state="North Carolina",
-            county="Wake",
-            species_codes=["0131", "0068"],  # Loblolly Pine, Red Maple
-            output_dir="quickstart_data"
-        )
-        print(f"   Downloaded {len(files)} species files")
-    except Exception as e:
-        print(f"Download failed: {e}")
-        print("\nNote: If boundary download fails, you can use a custom bounding box:")
-        print("  files = api.download_species(")
-        print("      bbox=(-78.97, 35.57, -78.25, 36.08),  # Wake County approx bounds")
-        print("      crs='4326',  # WGS84")
-        print("      species_codes=['0131', '0068'],")
-        print("      output_dir='quickstart_data'")
-        print("  )")
-        return
+    # Get predefined bounding box for Wake County
+    bbox, crs = get_location_bbox("wake_nc")
+
+    files = api.download_species(
+        bbox=bbox,
+        crs=crs,
+        species_codes=["0131", "0068"],  # Loblolly Pine, Red Maple
+        output_dir="quickstart_data"
+    )
+    print(f"   Downloaded {len(files)} species files")
 
     # 2. Create Zarr store
     print("\n2. Creating Zarr store...")
